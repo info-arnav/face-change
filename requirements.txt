@@ -16,3 +16,5 @@ gfpgan
 moviepy
 ffmpeg-python
 gdown
+pytesseract
+pillow

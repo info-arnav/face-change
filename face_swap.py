@@ -102,10 +102,10 @@ def face_image_resize(img, w,h):
     detected_face = img
     if len(detected_faces) > 0:
         for temp_img in detected_faces[:1]:
-            x = max(temp_img["region"]["x"] - 50, 0)
-            y = max(temp_img["region"]["y"] - 50, 0)
-            w = temp_img["region"]["w"] + 100
-            h = temp_img["region"]["h"] + 100
+            x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2),0)
+            y = max(temp_img["region"]["y"] - int(temp_img["region"]["h"]/2),0)
+            w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5) 
+            h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5) 
             detected_face = img[y:y+h, x:x+w]
             detected = True
     new_image = cv2.resize(detected_face, (w, h))
@@ -116,7 +116,7 @@ def replace_face(path, images=[]):
     obj = DeepFace.analyze(img, actions = ["gender"])
     temp_obj = []
     i = 0
-    test = ""
+    orignal = ""
     face = ""
     for temp_img in obj:
         sub_path = ""
@@ -127,24 +127,21 @@ def replace_face(path, images=[]):
             sub_path = f'static/{i}.jpg'
         else:
             sub_path = f'static/{i}.jpg'
-        xo = temp_img["region"]["x"]
-        yo = temp_img["region"]["y"]
-        wo = temp_img["region"]["w"]
-        ho = temp_img["region"]["h"]
-        x = max(temp_img["region"]["x"] - 50, 0)
-        y = max(temp_img["region"]["y"] - 50, 0)
-        w = temp_img["region"]["w"] + 100
-        h = temp_img["region"]["h"] + 100
+        x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2), 0)
+        y = max(temp_img["region"]["y"] - int(temp_img["region"]["h"]/2), 0)
+        w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5)
+        h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5)
         print("Gender : " + temp_img["dominant_gender"])
         print("Face : ")
-        test = img[y:y+h, x:x+w]
+        orignal = img[y:y+h, x:x+w]
         plt.imshow(img[y:y+h, x:x+w][:,:,::-1])
         plt.show()
         if bool(int(input("Change face 0/1? "))):
             # Can use temp_img object gender key to change images with same gender
             print(f'using {sub_path}')
+            cv2.imwrite("temp.jpg", orignal)
             face = face_image_resize(cv2.imread(sub_path), w,h)
-            new_face_image = swap(face, test)
+            new_face_image = swap(face, orignal)
             img[y:y+h, x:x+w] = new_face_image
             i = i + 1
         print("")

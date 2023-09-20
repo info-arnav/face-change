@@ -89,10 +89,10 @@ def detect_faces_and_swap(frame):
     obj = DeepFace.analyze(img, actions = ["gender"])
     for temp_img in obj:
         i = i + 1
-        x = max(temp_img["region"]["x"] - 50, 0)
-        y = max(temp_img["region"]["y"] - 50, 0)
-        w = temp_img["region"]["w"] + 100
-        h = temp_img["region"]["h"] + 100
+        x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2), 0)
+        y = max(temp_img["region"]["y"] - int(temp_img["region"]["h"]/2), 0)
+        w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5)
+        h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5)
         face = img[y:y+h, x:x+w]
         face_test = img
         action(encodings, dictionary, face, frame, img, x,y,w,h)
