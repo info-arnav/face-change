@@ -120,7 +120,7 @@ def extract_text_and_replace(image_path):
         text_img.resize((text_img.width * 3, text_img.height * 3))
         text_img = text_img.convert('L')
         extracted_text = pytesseract.image_to_string(text_img,config='--psm 6', lang='eng')
-        if  "rohit" in extracted_text.lower() or  "rohii" in extracted_text.lower():
+        if  "rohit" in extracted_text.lower() or "rohii" in extracted_text.lower() or "ohi" in extracted_text.lower() or ("r" in extracted_text.lower() and "m" not in extracted_text.lower()):
             empty = cv2.imread("static/white.png")
             resized_empty = cv2.resize(empty, (w,h))
             img[y:y+h, x:x+w] = resized_empty
