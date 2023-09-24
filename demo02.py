@@ -1,9 +1,9 @@
 
 from face_swap import swap, cv2, DeepFace
 import os,shutil
+from text_detector import text_detector
 import face_recognition
 from moviepy.editor import *
-import pytesseract
 import numpy as np
 from PIL import Image
 
@@ -20,6 +20,8 @@ def video_frames(path):
     array = []
     shutil.rmtree("frames")
     os.mkdir("frames")
+    shutil.rmtree("text")
+    os.mkdir("text")
     capture = cv2.VideoCapture(path)
     video = VideoFileClip(path)
     audio = video.audio
@@ -108,29 +110,34 @@ def detect_faces_and_swap(frame):
         face = img[y:y+h, x:x+w]
         action(encodings, dictionary, face, frame, img, x,y,w,h)
 
-def extract_text_and_replace(image_path):
-    img = cv2.imread(image_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    th = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    black = np.zeros([img.shape[0] + 2, img.shape[1] + 2], np.uint8)
-    mask = cv2.floodFill(th.copy(), black, (0,0), 0, 0, 0, flags=8)[1]
-    kernel_length = 30
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_length, 1))
-    dilate = cv2.dilate(mask, horizontal_kernel, iterations=1)
-    contours = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = contours[0] if len(contours) == 2 else contours[1]
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        cv2.imwrite("temp/temp-text.png", img[y:y+h, x:x+w])
-        text_img = Image.open("temp/temp-text.png")
-        text_img.resize((text_img.width * 3, text_img.height * 3))
-        text_img = text_img.convert('L')
-        extracted_text = pytesseract.image_to_string(text_img,config='--psm 6', lang='eng')
-        if  "rohit" in extracted_text.lower() or "rohii" in extracted_text.lower() or "ohi" in extracted_text.lower() or ("r" in extracted_text.lower() and "m" not in extracted_text.lower()):
+def replace_text(img, n_boxes, data, path):
+    file = open(f"text/{path}", "a")
+    file.seek(2)
+    file.write("\nMode Change\n")
+    for i in range(n_boxes):
+        (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
+        if  "h" in data["text"][i].lower() and "t" in data["text"][i].lower():
             empty = cv2.imread("static/white.png")
             resized_empty = cv2.resize(empty, (w,h))
             img[y:y+h, x:x+w] = resized_empty
-            cv2.imwrite(image_path, img)
+        else:
+            file.write(data["text"][i].lower()+"\n")
+    file.close()
+    return img
+
+def extract_text(image_path):
+    img = cv2.imread(image_path)
+    path = image_path.split("/")[1].split(".")[0] + ".txt"
+    temp_file = open(f"text/{path}", "x")
+    temp_file.close()
+    [data_opening,data_canny,data_threshold] = text_detector(image_path)
+    n_boxes_opening = len(data_opening['text'])
+    n_boxes_canny = len(data_canny['text'])
+    n_boxes_threshold = len(data_threshold['text'])
+    img = replace_text(img, n_boxes_opening ,data_opening, path)
+    img = replace_text(img, n_boxes_canny ,data_canny, path)
+    img = replace_text(img, n_boxes_threshold ,data_threshold, path)
+    cv2.imwrite(image_path, img)
 
 def change_video(path):
     array = video_frames(path)
@@ -138,8 +145,8 @@ def change_video(path):
     fps = array[1]
     for x in frames:
         print(x)
-        extract_text_and_replace(x)
-        detect_faces_and_swap(x)
+        extract_text(x)
+        # detect_faces_and_swap(x)
     video_join(frames, fps)
 
 if executable:
