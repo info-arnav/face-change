@@ -7,6 +7,8 @@ import pytesseract
 import numpy as np
 from PIL import Image
 
+executable = False
+
 tolerance = 0.5 # 0.5 -> Very Accurate | >0.5 -> Decent
 
 old_face = "static/orignal.png"
@@ -140,6 +142,7 @@ def change_video(path):
         detect_faces_and_swap(x)
     video_join(frames, fps)
 
-change_video(video)
+if executable:
+    change_video(video)
 
 
