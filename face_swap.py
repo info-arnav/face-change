@@ -21,8 +21,8 @@ print("Using", provider)
 reference_face_position = 0
 similar_face_distance = 0.85
 
-swapper = insightface.model_zoo.get_model("inswapper_128.onnx", providers=provider)
-enhancer = GFPGANer(model_path="GFPGANv1.4.pth", upscale=1, device="cpu")
+swapper = insightface.model_zoo.get_model("models/inswapper_128.onnx", providers=provider)
+enhancer = GFPGANer(model_path="models/GFPGANv1.4.pth", upscale=1, device="cpu")
 lock = threading.Lock()
 face_annalyser = None
 
@@ -85,7 +85,6 @@ def process_frame(source_face, reference_face, temp_frame):
             temp_frame = enhance_face(source_face, temp_frame)
         except:
             print("Face not found in the image provided")
-#             Exception handinling for wrong face
     return temp_frame
 
 
@@ -97,8 +96,11 @@ def swap(new_face,image):
     return result
 
 def face_image_resize(img, w,h):
-    detected_faces = DeepFace.analyze(img, actions = ["gender"], enforce_detection=False)
-    detected = False
+    detected_faces = []
+    try:
+        detected_faces = DeepFace.analyze(img, actions = ["gender"], enforce_detection=False)
+    except: 
+        print("No face detected")
     detected_face = img
     if len(detected_faces) > 0:
         for temp_img in detected_faces[:1]:
@@ -107,48 +109,40 @@ def face_image_resize(img, w,h):
             w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5) 
             h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5) 
             detected_face = img[y:y+h, x:x+w]
-            detected = True
     new_image = cv2.resize(detected_face, (w, h))
     return new_image
 
 def replace_face(path, images=[]):
     img = cv2.imread(path)
-    obj = DeepFace.analyze(img, actions = ["gender"])
-    temp_obj = []
-    i = 0
-    orignal = ""
-    face = ""
+    obj = []
+    male = 0
+    female = 0
+    try:
+        obj = DeepFace.analyze(img, actions = ["gender"])
+    except:
+        print("No face detected in image provided")
     for temp_img in obj:
-        sub_path = ""
-        if len(images) > i:
-            sub_path = images[i]
-        elif len(images) == i:
-            i = 0
-            sub_path = f'static/{i}.jpg'
-        else:
-            sub_path = f'static/{i}.jpg'
-        x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2), 0)
-        y = max(temp_img["region"]["y"] - int(temp_img["region"]["h"]/2), 0)
-        w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5)
-        h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5)
-        print("Gender : " + temp_img["dominant_gender"])
-        print("Face : ")
-        orignal = img[y:y+h, x:x+w]
-        plt.imshow(img[y:y+h, x:x+w][:,:,::-1])
+        x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2),0)    
+        y = max(temp_img["region"]["y"] - int(temp_img["region"]["h"]/2),0)
+        w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5) 
+        h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5)           
+        plt.imshow(img[temp_img["region"]["y"]:temp_img["region"]["y"]+temp_img["region"]["h"], temp_img["region"]["x"]:temp_img["region"]["x"]+temp_img["region"]["w"]][:,:,::-1])
         plt.show()
-        if bool(int(input("Change face 0/1? "))):
-            # Can use temp_img object gender key to change images with same gender
-            print(f'using {sub_path}')
-            cv2.imwrite("temp.jpg", orignal)
-            face = face_image_resize(cv2.imread(sub_path), w,h)
-            new_face_image = swap(face, orignal)
-            img[y:y+h, x:x+w] = new_face_image
-            i = i + 1
-        print("")
-    cv2.imwrite("output.jpg", img)
-    print("image saved")
-    plt.imshow(img[:,:,::-1])
-    plt.show()
+        if "yes" in input("Change face ? yes/no : ").lower():
+            if len(images) > 0:
+                img[y:y+h, x:x+w] = swap(cv2.imread(images[0]), img[y:y+h, x:x+w])
+                del images[-1]
+            else:
+                try:
+                    if "woman" in temp_img["dominant_gender"].lower():
+                        img[y:y+h, x:x+w] = swap(cv2.imread(f'data/female/{female}.jpg'), img[y:y+h, x:x+w])
+                        female = female + 1
+                    else:
+                        img[y:y+h, x:x+w] = swap(cv2.imread(f'data/male/{male}.jpg'), img[y:y+h, x:x+w])
+                        male = male + 1
+                except:
+                    print("Out of new face images for this gender")
+    cv2.imwrite("output/output.jpg", img)
 
 
 

@@ -1,4 +1,4 @@
-from face_swap import swap, replace_face, plt, cv2, DeepFace
+from face_swap import swap, plt, cv2, DeepFace
 import os,shutil
 import face_recognition
 from moviepy.editor import *
@@ -12,7 +12,7 @@ def video_frames(path):
     capture = cv2.VideoCapture(path)
     video = VideoFileClip(path)
     audio = video.audio
-    audio.write_audiofile("output.mp3")
+    audio.write_audiofile("temp/output-audio.mp3")
     fps = capture.get(cv2.CAP_PROP_FPS)
     frameNr = 0
     while (True):
@@ -43,16 +43,16 @@ def video_play(path):
 
 def video_join(frames, fps):
     height, width, layers = cv2.imread(frames[0]).shape
-    video = cv2.VideoWriter("output.mp4", cv2.VideoWriter_fourcc(*'DIVX'), fps, (width,height))
+    video = cv2.VideoWriter("temp/output-video.mp4", cv2.VideoWriter_fourcc(*'DIVX'), fps, (width,height))
     for image in frames:
         video.write(cv2.imread(image))
     cv2.destroyAllWindows()
     video.release()
-    video_clip = VideoFileClip("output.mp4")
-    audio_clip = AudioFileClip("output.mp3")
+    video_clip = VideoFileClip("temp/output-video.mp4")
+    audio_clip = AudioFileClip("temp/output-audio.mp3")
     final_clip = video_clip.set_audio(audio_clip)
-    final_clip.write_videofile("output.mp4")
-    video_play("output.mp4")
+    final_clip.write_videofile("output/output.mp4")
+    video_play("output/output.mp4")
 
 def match_face(face_array, face):
     result = face_recognition.compare_faces(face_array, face, tolerance=tolerance)
@@ -77,8 +77,8 @@ def action(encodings, dictionary, face, frame, img,x,y,w,h):
             dictionary[len(encodings)-1] = cv2.imread(input("Path to new face : "))
     if matched in dictionary.keys():
         new_image = swap(dictionary[matched],face)
-        cv2.imwrite("temp.jpg", new_image)
-        img[y:y+h, x:x+w] = cv2.imread("temp.jpg")
+        cv2.imwrite("temp/temp.jpg", new_image)
+        img[y:y+h, x:x+w] = cv2.imread("temp/temp.jpg")
         cv2.imwrite(frame, img)
 
 encodings = []
@@ -86,7 +86,11 @@ dictionary = {}
 def detect_faces_and_swap(frame):
     img = cv2.imread(frame)
     i = 0
-    obj = DeepFace.analyze(img, actions = ["gender"])
+    obj = []
+    try:
+        obj = DeepFace.analyze(img, actions = ["gender"])
+    except:
+        print("No face detected")
     for temp_img in obj:
         i = i + 1
         x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2), 0)
@@ -94,7 +98,6 @@ def detect_faces_and_swap(frame):
         w = temp_img["region"]["w"] + int(temp_img["region"]["w"]/1.5)
         h = temp_img["region"]["h"] + int(temp_img["region"]["h"]/1.5)
         face = img[y:y+h, x:x+w]
-        face_test = img
         action(encodings, dictionary, face, frame, img, x,y,w,h)
 
 def change_video(path):

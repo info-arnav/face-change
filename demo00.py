@@ -1,2 +1,2 @@
-from face_swap import swap, replace_face, plt, cv2
+from face_swap import replace_face
 replace_face("static/demo.png", ["static/new.jpg"])

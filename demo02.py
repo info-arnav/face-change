@@ -1,5 +1,5 @@
 
-from face_swap import swap, replace_face, plt, cv2, DeepFace
+from face_swap import swap, cv2, DeepFace
 import os,shutil
 import face_recognition
 from moviepy.editor import *
@@ -21,7 +21,7 @@ def video_frames(path):
     capture = cv2.VideoCapture(path)
     video = VideoFileClip(path)
     audio = video.audio
-    audio.write_audiofile("output-audio.mp3")
+    audio.write_audiofile("temp/output-audio.mp3")
     fps = capture.get(cv2.CAP_PROP_FPS)
     frameNr = 0
     while (True):
@@ -52,15 +52,15 @@ def video_play(path):
 
 def video_join(frames, fps):
     height, width, layers = cv2.imread(frames[0]).shape
-    video = cv2.VideoWriter("output-video.mp4", cv2.VideoWriter_fourcc(*'DIVX'), fps, (width,height))
+    video = cv2.VideoWriter("temp/output-video.mp4", cv2.VideoWriter_fourcc(*'DIVX'), fps, (width,height))
     for image in frames:
         video.write(cv2.imread(image))
     cv2.destroyAllWindows()
     video.release()
-    video_clip = VideoFileClip("output-video.mp4")
-    audio_clip = AudioFileClip("output-audio.mp3")
+    video_clip = VideoFileClip("temp/output-video.mp4")
+    audio_clip = AudioFileClip("temp/output-audio.mp3")
     final_clip = video_clip.set_audio(audio_clip)
-    final_clip.write_videofile("output.mp4")
+    final_clip.write_videofile("output/output.mp4")
     print("Video Saved")
 
 def match_face(face_array, face):
@@ -81,8 +81,8 @@ def action(encodings, dictionary, face, frame, img,x,y,w,h):
         print(matched, result)
         if matched in dictionary.keys():
             new_image = swap(dictionary[matched],face)
-            cv2.imwrite("temp.jpg", new_image)
-            img[y:y+h, x:x+w] = cv2.imread("temp.jpg")
+            cv2.imwrite("temp/temp.jpg", new_image)
+            img[y:y+h, x:x+w] = cv2.imread("temp/temp.jpg")
             cv2.imwrite(frame, img)
 
 encodings = [ face_recognition.face_encodings(cv2.imread(old_face),model="large")[0]]
@@ -92,7 +92,11 @@ def detect_faces_and_swap(frame):
     img = cv2.imread(frame)
     cv2.imwrite(frame, img)
     i = 0
-    obj = DeepFace.analyze(img, actions = ["gender"])
+    obj = []
+    try:
+        obj = DeepFace.analyze(img, actions = ["gender"])
+    except:
+        print("No face detected")
     for temp_img in obj:
         i = i + 1
         x = max(temp_img["region"]["x"] - int(temp_img["region"]["w"]/2), 0)
@@ -115,8 +119,8 @@ def extract_text_and_replace(image_path):
     contours = contours[0] if len(contours) == 2 else contours[1]
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
-        cv2.imwrite("temp-text.png", img[y:y+h, x:x+w])
-        text_img = Image.open("temp-text.png")
+        cv2.imwrite("temp/temp-text.png", img[y:y+h, x:x+w])
+        text_img = Image.open("temp/temp-text.png")
         text_img.resize((text_img.width * 3, text_img.height * 3))
         text_img = text_img.convert('L')
         extracted_text = pytesseract.image_to_string(text_img,config='--psm 6', lang='eng')
