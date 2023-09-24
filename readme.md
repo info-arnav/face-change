@@ -1,6 +1,6 @@
 # Face Changing Program
 
-This program helps you choose the faces you want to change in a group image and change them with the faces you want to with a pretrained model using the library insightface.
+This program uses special tools like deepface, insightface, and face recognition to help you choose and change faces in a group picture. It's like swapping faces to create the look you want, and these tools make it super easy!
 
 # Execution
 
