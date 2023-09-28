@@ -9,3 +9,6 @@ __pycache__
 data
 test
 text
+text-box
+test.ipynb
+.ipynb_checkpoints

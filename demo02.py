@@ -1,13 +1,13 @@
 
 from face_swap import swap, cv2, DeepFace
-import os,shutil
 from text_detector import text_detector
+import os,shutil
 import face_recognition
-from moviepy.editor import *
 import numpy as np
+from moviepy.editor import *
 from PIL import Image
 
-executable = False
+executable = True
 
 tolerance = 0.5 # 0.5 -> Very Accurate | >0.5 -> Decent
 
@@ -15,6 +15,7 @@ old_face = "static/orignal.png"
 new_face = "static/demo.png"
 video = "static/sample.mp4"
 new_name = "Arnav"
+original_name = "rohit"
 
 def video_frames(path):
     array = []
@@ -22,6 +23,8 @@ def video_frames(path):
     os.mkdir("frames")
     shutil.rmtree("text")
     os.mkdir("text")
+    shutil.rmtree("text-box")
+    os.mkdir("text-box")
     capture = cv2.VideoCapture(path)
     video = VideoFileClip(path)
     audio = video.audio
@@ -110,33 +113,51 @@ def detect_faces_and_swap(frame):
         face = img[y:y+h, x:x+w]
         action(encodings, dictionary, face, frame, img, x,y,w,h)
 
-def replace_text(img, n_boxes, data, path):
-    file = open(f"text/{path}", "a")
-    file.seek(2)
-    file.write("\nMode Change\n")
+def should_replace(text):
+    count = 0
+    for x in original_name:
+        if x in text:
+            count = count + 1
+    if count == len(original_name):
+        return True
+    else:
+        return False
+    
+def create_boxes(n_boxes, data, path, type):
+    img = cv2.imread(f"frames/{path}.jpg")
     for i in range(n_boxes):
         (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
-        if  "h" in data["text"][i].lower() and "t" in data["text"][i].lower():
+        img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        img = cv2.putText(img, data["text"][i].lower(), (x, y - 5),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 1)
+    cv2.imwrite(f"text-box/{path}-{type}.jpg", img)
+
+def replace_text(img, n_boxes, data, path, type):
+    file = open(f"text/{path}.txt", "a")
+    file.seek(2)
+    file.write("\nMode Change\n")
+    create_boxes(n_boxes, data, path, type)
+    for i in range(n_boxes):
+        (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
+        file.write(data["text"][i].lower()+"\n")
+        if  should_replace(data["text"][i].lower()):
             empty = cv2.imread("static/white.png")
             resized_empty = cv2.resize(empty, (w,h))
             img[y:y+h, x:x+w] = resized_empty
-        else:
-            file.write(data["text"][i].lower()+"\n")
     file.close()
     return img
 
 def extract_text(image_path):
     img = cv2.imread(image_path)
-    path = image_path.split("/")[1].split(".")[0] + ".txt"
-    temp_file = open(f"text/{path}", "x")
+    path = image_path.split("/")[1].split(".")[0]
+    temp_file = open(f"text/{path}.txt", "x")
     temp_file.close()
     [data_opening,data_canny,data_threshold] = text_detector(image_path)
     n_boxes_opening = len(data_opening['text'])
     n_boxes_canny = len(data_canny['text'])
     n_boxes_threshold = len(data_threshold['text'])
-    img = replace_text(img, n_boxes_opening ,data_opening, path)
-    img = replace_text(img, n_boxes_canny ,data_canny, path)
-    img = replace_text(img, n_boxes_threshold ,data_threshold, path)
+    img = replace_text(img, n_boxes_opening ,data_opening, path,"opening")
+    img = replace_text(img, n_boxes_canny ,data_canny, path,"canny")
+    img = replace_text(img, n_boxes_threshold ,data_threshold, path,"threshold")
     cv2.imwrite(image_path, img)
 
 def change_video(path):
