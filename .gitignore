@@ -12,3 +12,7 @@ text
 text-box
 test.ipynb
 .ipynb_checkpoints
+labelImg
+tmp
+train_data
+val_data

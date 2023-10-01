@@ -1,6 +1,6 @@
 
 from face_swap import swap, cv2, DeepFace
-from text_detector import text_detector
+from text_detector import text_detector, text_erasor
 import os,shutil
 import face_recognition
 import numpy as np
@@ -140,9 +140,10 @@ def replace_text(img, n_boxes, data, path, type):
         (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
         file.write(data["text"][i].lower()+"\n")
         if  should_replace(data["text"][i].lower()):
-            empty = cv2.imread("static/white.png")
-            resized_empty = cv2.resize(empty, (w,h))
-            img[y:y+h, x:x+w] = resized_empty
+            # empty = cv2.imread("static/white.png")
+            # resized_empty = cv2.resize(empty, (w,h))
+            img[y:y+h, x:x+w] = text_erasor(img[y:y+h, x:x+w], [[44, 6, 56],[0, 0, 0]], [[255, 255, 255],[200, 50, 100]])
+            # img[y:y+h, x:x+w] = resized_empty
     file.close()
     return img
 

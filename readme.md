@@ -10,7 +10,7 @@ Repo Setup
 conda create --name Facechange python=3.7
 conda activate Facechange
 pip install -r requirements.txt
-mkdir data frames middleware models output static temp text text-box
+mkdir data frames middleware models output static temp text text-box tmp
 python setup/download_models.py
 wget https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
 gunzip eng.traineddata.gz

@@ -16,6 +16,9 @@ available = onnxruntime.get_available_providers()
 
 provider = [available[0]]
 
+# In case iof GPU Error use ->
+# provider = 'CPUExecutionProvider' 
+
 print("Using", provider)
 
 reference_face_position = 0
