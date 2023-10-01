@@ -1,3 +1,0 @@
-tflite-model-maker
-tflite-support
-numba
