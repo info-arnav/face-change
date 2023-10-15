@@ -10,10 +10,11 @@ data
 test
 text
 text-box
-test.ipynb
+text-model-train
 .ipynb_checkpoints
 labelImg
 tmp
 train_data
 val_data
 fun
+delete

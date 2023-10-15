@@ -6,6 +6,7 @@ import face_recognition
 import numpy as np
 from moviepy.editor import *
 from PIL import Image
+from error_scope import original_name_errors
 
 executable = True
 
@@ -115,10 +116,8 @@ def detect_faces_and_swap(frame):
 
 def should_replace(text):
     count = 0
-    for x in original_name:
-        if x in text:
-            count = count + 1
-    if count == len(original_name):
+    value = False
+    if text in original_name_errors:
         return True
     else:
         return False
@@ -139,10 +138,15 @@ def replace_text(img, n_boxes, data, path, type):
     for i in range(n_boxes):
         (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
         file.write(data["text"][i].lower()+"\n")
-        if  should_replace(data["text"][i].lower()):
+        if should_replace(data["text"][i].lower()):
             # empty = cv2.imread("static/white.png")
             # resized_empty = cv2.resize(empty, (w,h))
-            img[y:y+h, x:x+w] = text_erasor(img[y:y+h, x:x+w], [[44, 6, 56],[0, 0, 0]], [[255, 255, 255],[200, 50, 100]])
+            colour_array = []
+            if data["colour"][i] == "0":
+                colour_array = [147, 150, 164]
+            else:
+                colour_array = [116, 118, 128]
+            img[y:y+h, x:x+w] = text_erasor(img[y:y+h, x:x+w], colour_array)
             # img[y:y+h, x:x+w] = resized_empty
     file.close()
     return img
