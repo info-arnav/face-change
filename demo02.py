@@ -7,6 +7,7 @@ import numpy as np
 from moviepy.editor import *
 from PIL import Image
 from error_scope import original_name_errors
+from east_text_model import find_text_boxes
 
 executable = True
 
@@ -117,10 +118,25 @@ def detect_faces_and_swap(frame):
 def should_replace(text):
     count = 0
     value = False
-    if text in original_name_errors:
-        return True
-    else:
-        return False
+    count = 0
+    unique = ""
+    for x in text:
+        if x not in unique:
+            unique = unique + x
+    for x in unique:
+        if x in original_name:
+            count = count + 1
+        if count == 2:
+            value = True
+            break
+    return value
+
+def resize_bbox_to_minimum(x,y,w,h):
+    min_rect = cv2.minAreaRect(np.array([(x, y), (x + w, y), (x, y + h), (x + w, y + h)]))
+    min_rect_points = cv2.boxPoints(min_rect).astype(int)
+    min_x, min_y = np.min(min_rect_points, axis=0)
+    max_x, max_y = np.max(min_rect_points, axis=0)
+    return (min_x, min_y, max_x - min_x, max_y - min_y)
     
 def create_boxes(n_boxes, data, path, type):
     img = cv2.imread(f"frames/{path}.jpg")
@@ -139,15 +155,20 @@ def replace_text(img, n_boxes, data, path, type):
         (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
         file.write(data["text"][i].lower()+"\n")
         if should_replace(data["text"][i].lower()):
-            # empty = cv2.imread("static/white.png")
-            # resized_empty = cv2.resize(empty, (w,h))
-            colour_array = []
-            if data["colour"][i] == "0":
-                colour_array = [147, 150, 164]
-            else:
-                colour_array = [116, 118, 128]
-            img[y:y+h, x:x+w] = text_erasor(img[y:y+h, x:x+w], colour_array)
-            # img[y:y+h, x:x+w] = resized_empty
+            all_boxes = find_text_boxes(img)
+            area = 0
+            values = [0,0,0,0]
+            for value in all_boxes:
+                xt = min(max(x, value[0]), x+w)
+                wwt = min(w+x, value[2])
+                wt = max(1,wwt-xt)
+                yt = min(max(y, value[1]), y+h)
+                wht = min(h+y, value[3])
+                ht = max(1,wht-yt)
+                if ht*wt >= area:
+                    area = ht*wt
+                    values = [xt,yt,wt,ht]
+            img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]] = text_erasor(img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]])
     file.close()
     return img
 

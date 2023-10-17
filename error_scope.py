@@ -1,4 +1,7 @@
 original_name_errors = [
+  "romit",
+  "rhot",
+  "hit",
   'r@thi',   
   'r@ht',    
   'r@hixt',  
