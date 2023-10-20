@@ -16,7 +16,8 @@ def calculate_intersection_area(box1, box2):
     else:
         return 0
 
-def find_text_boxes(image):
+def find_text_boxes(image, image_path, count):
+    copy = cv2.imread(f'frames/{image_path}.jpg')
     east_model_path = 'models/frozen_east_text_detection.pb'
     net = cv2.dnn.readNet(east_model_path)
 
@@ -76,6 +77,8 @@ def find_text_boxes(image):
                 intersection_area += calculate_intersection_area((start_x, start_y, end_x - start_x, end_y - start_y),(existing_box[0], existing_box[1], existing_box[2] - existing_box[0], existing_box[3] - existing_box[1]))
             box_area = (end_x - start_x) * (end_y - start_y)
             adjusted_area = max(0, box_area - intersection_area)
+            cv2.rectangle(copy, (int(start_x * rW), int(start_y * rH)), (int(end_x * rW), int(end_y * rH)), (0, 255, 0), 2)
             array.append([int(start_x * rW), int(start_y * rH), int(end_x * rW), int(end_y * rH), adjusted_area])
-
+            
+    cv2.imwrite(f'detected-text/{image_path}-{count}.jpg', copy)
     return array

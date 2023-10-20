@@ -9,7 +9,6 @@ from PIL import Image
 from error_scope import original_name_errors
 from east_text_model import find_text_boxes
 from word_to_image import *
-from ranges import black, blue
 
 executable = True
 
@@ -18,7 +17,7 @@ tolerance = 0.5 # 0.5 -> Very Accurate | >0.5 -> Decent
 old_face = "static/orignal.png"
 new_face = "static/demo.png"
 video = "static/sample.mp4"
-new_name = "Name"
+new_name = "Arnav"
 original_name = "rohit"
 
 def video_frames(path):
@@ -140,11 +139,13 @@ def create_boxes(n_boxes, data, path, type):
         img = cv2.putText(img, data["text"][i].lower(), (x, y - 5),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 1)
     cv2.imwrite(f"text-box/{path}-{type}.jpg", img)
 
-def replace_text(img, n_boxes, data, path, type):
+def replace_text(img, n_boxes, data, path, type, text_area=0, text_area_values=[0,0,1,1]):
     file = open(f"text/{path}.txt", "a")
     file.seek(2)
     file.write("\nMode Change\n")
     create_boxes(n_boxes, data, path, type)
+    text_area = text_area
+    text_area_values = text_area_values
     for i in range(n_boxes):
         (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
         file.write(data["text"][i].lower()+"\n")
@@ -162,16 +163,12 @@ def replace_text(img, n_boxes, data, path, type):
                 if ht*wt >= area:
                     area = ht*wt
                     values = [xt,yt,wt,ht]
+            if area > text_area:
+                text_area = area
+                text_area_values = [values[0], values[1], values[2], values[3]]
             img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]] = text_erasor(img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]])
-            if values[0] > 1000:
-                color = black
-            else:
-                color = blue
-            banner = remove_other_colours(cv2.imread("temp/new_banner.png"), rgb_to_hsv(find_most_common_color(img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]])),rgb_to_hsv(color)) #temp
-            new_banner_recoloured = cv2.resize(banner, (values[2],values[3])) #temp
-            img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]] = new_banner_recoloured #temp
     file.close()
-    return img
+    return (img, text_area, text_area_values)
 
 def extract_text(image_path):
     img = cv2.imread(image_path)
@@ -179,8 +176,17 @@ def extract_text(image_path):
     temp_file = open(f"text/{path}.txt", "x")
     temp_file.close()
     [data_opening,data_canny,data_threshold] = text_detector(image_path)
+    n_boxes_opening = len(data_opening['text'])
+    n_boxes_canny = len(data_canny['text'])
     n_boxes_threshold = len(data_threshold['text'])
-    img = replace_text(img, n_boxes_threshold ,data_threshold, path,"threshold")
+    text_area_values = [0,0,1,1]
+    text_area = 0
+    (img, text_area, text_area_values) = replace_text(img, n_boxes_opening ,data_opening, path,"opening", text_area, text_area_values)
+    (img, text_area, text_area_values) = replace_text(img, n_boxes_canny ,data_canny, path,"canny", text_area, text_area_values)
+    (img, text_area, text_area_values) = replace_text(img, n_boxes_threshold ,data_threshold, path,"threshold", text_area, text_area_values)
+    banner = remove_other_colours(cv2.imread("temp/new_banner.png"), rgb_to_hsv(find_most_common_color(img[text_area_values[1]:text_area_values[1]+text_area_values[3], text_area_values[0]:text_area_values[0]+text_area_values[2]])),rgb_to_hsv([0,0,139])) #temp
+    new_banner_recoloured = cv2.resize(banner, (text_area_values[2],text_area_values[3])) #temp
+    img[text_area_values[1]:text_area_values[1]+text_area_values[3], text_area_values[0]:text_area_values[0]+text_area_values[2]] = new_banner_recoloured #temp
     cv2.imwrite(image_path, img)
 
 def change_video(path):
@@ -192,7 +198,7 @@ def change_video(path):
     for x in frames:
         print(x)
         extract_text(x)
-        detect_faces_and_swap(x)
+        # detect_faces_and_swap(x)
     video_join(frames, fps)
 
 if executable:
