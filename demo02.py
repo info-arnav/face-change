@@ -21,6 +21,11 @@ video = "static/sample.mp4"
 new_name = "Name"
 original_name = "rohit"
 
+hBlue = 0
+hBlack = 0
+wBlue = 0
+wBlack = 0
+
 def video_frames(path):
     array = []
     shutil.rmtree("frames")
@@ -122,8 +127,9 @@ def detect_faces_and_swap(frame):
 def should_replace(text):
     if text in original_name_errors:
         return True
-    else:
-        return False
+    elif "h" in text and "i" in text and ("t" in text or "r" in text):
+        return True
+    return False
 
 def resize_bbox_to_minimum(x,y,w,h):
     min_rect = cv2.minAreaRect(np.array([(x, y), (x + w, y), (x, y + h), (x + w, y + h)]))
@@ -141,6 +147,10 @@ def create_boxes(n_boxes, data, path, type):
     cv2.imwrite(f"text-box/{path}-{type}.jpg", img)
 
 def replace_text(img, n_boxes, data, path, type):
+    global hBlue
+    global hBlack
+    global wBlue
+    global wBlack 
     file = open(f"text/{path}.txt", "a")
     file.seek(2)
     file.write("\nMode Change\n")
@@ -163,13 +173,26 @@ def replace_text(img, n_boxes, data, path, type):
                     area = ht*wt
                     values = [xt,yt,wt,ht]
             img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]] = text_erasor(img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]])
-            if values[0] > 1000:
+            banner = []
+            # Option 1
+            if values[0] > 800:
                 color = black
+                if hBlack == 0:
+                    hBlack = values[3]
+                    wBlack = values[2]
+                wConsidered, hConsidered = wBlack, hBlack #option 1
+                # wConsidered, hConsidered = values[2],values[3] #option 2
+                banner = remove_other_colours(cv2.imread("temp/new_banner_man.png"), rgb_to_hsv(find_most_common_color(img[values[1]:values[1]+hConsidered, values[0]:values[0]+wConsidered])),rgb_to_hsv(color)) #temp
             else:
                 color = blue
-            banner = remove_other_colours(cv2.imread("temp/new_banner.png"), rgb_to_hsv(find_most_common_color(img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]])),rgb_to_hsv(color)) #temp
-            new_banner_recoloured = cv2.resize(banner, (values[2],values[3])) #temp
-            img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]] = new_banner_recoloured #temp
+                if hBlue == 0:
+                    hBlue = values[3]
+                    wBlue = values[2]
+                wConsidered, hConsidered = wBlue, hBlue #option 1
+                # wConsidered, hConsidered = values[2],values[3] #option 2
+                banner = remove_other_colours(cv2.imread("temp/new_banner_women.png"), rgb_to_hsv(find_most_common_color(img[values[1]:values[1]+hConsidered, values[0]:values[0]+wConsidered])),rgb_to_hsv(color)) #temp
+            new_banner_recoloured = cv2.resize(banner, (wConsidered,hConsidered)) #temp
+            img[values[1]:values[1]+hConsidered, values[0]:values[0]+wConsidered] = new_banner_recoloured #temp
     file.close()
     return img
 
@@ -187,12 +210,13 @@ def change_video(path):
     array = video_frames(path)
     frames = array[0]
     fps = array[1]
-    get_image(new_name)
+    get_image(new_name, "static/alphabets-v2.jpg", "new_banner_man.png")
+    get_image(new_name, "static/alphabets.png", "new_banner_women.png")
     print("New banner saved at temp/new_banner.png")
     for x in frames:
         print(x)
         extract_text(x)
-        detect_faces_and_swap(x)
+        # detect_faces_and_swap(x)
     video_join(frames, fps)
 
 if executable:

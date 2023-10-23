@@ -17,8 +17,8 @@ def hconcat_resize(img_list, interpolation = cv2.INTER_CUBIC):
     im_list_resize = [cv2.resize(img,(int(img.shape[1] * h_min / img.shape[0]),h_min), interpolation = interpolation) for img in img_list] 
     return cv2.hconcat(im_list_resize) 
 
-def get_image(text, bgcolour=[255,255,255], colour=[0,0,0]):
-    image = cv2.imread("static/alphabets.png")
+def get_image(text, path, filename, bgcolour=[255,255,255], colour=[0,0,0]):
+    image = cv2.imread(path)
     hImg,wImg,_ = image.shape
     boxes = pytesseract.image_to_boxes(image)
     dictionary = {}
@@ -35,5 +35,5 @@ def get_image(text, bgcolour=[255,255,255], colour=[0,0,0]):
             else:        
                 img_new = hconcat_resize([img_new, image[y:h,x:w]])
     img_new = remove_other_colours(img_new, bgcolour, colour, [0,0,200], [255,255,255])
-    cv2.imwrite("temp/new_banner.png", img_new)
+    cv2.imwrite(f"temp/{filename}", img_new)
     return img_new
