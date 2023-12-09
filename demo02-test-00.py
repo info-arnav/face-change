@@ -1,6 +1,6 @@
 
 from face_swap import swap, cv2, DeepFace
-from text_detector_test import text_detector, text_erasor
+from text_detector_test import text_detector, text_erasor, rgb_to_hsv, find_most_common_color
 import os,shutil
 import face_recognition
 import numpy as np
@@ -8,6 +8,8 @@ from moviepy.editor import *
 from PIL import Image
 from error_scope import original_name_errors
 from east_text_model import find_text_boxes
+from word_to_image import *
+from ranges import black, blue
 
 executable = True
 
@@ -18,6 +20,11 @@ new_face = "static/demo.png"
 video = "static/sample.mp4"
 new_name = "Arnav"
 original_name = "rohit"
+
+banner_blue_loc_array = []
+banner_blue_dim_array = [1,1]
+banner_black_loc_array = []
+banner_black_dim_array = [1,1]
 
 def video_frames(path):
     array = []
@@ -135,11 +142,19 @@ def create_boxes(n_boxes, data, path, type):
         img = cv2.putText(img, data["text"][i].lower(), (x, y - 5),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 1)
     cv2.imwrite(f"text-box/{path}-{type}.jpg", img)
 
-def extract_text_and_erase(image_path):
+def extract_text_and_erase(image_path, execution_number, frame_number):
+    global banner_blue_loc_array
+    global banner_black_loc_array
+    global banner_blue_dim_array
+    global banner_black_dim_array
     img = cv2.imread(image_path)
     path = image_path.split("/")[1].split(".")[0]
     all_boxes = find_text_boxes(img, path, "0")
     values = []
+    banner_blue_loc = [0,0,1,1]
+    banner_black_loc = [0,0,1,1]
+    most_common_blue_color = ""
+    most_common_black_color = ""
     for value in all_boxes:
         xt = value[0]
         wwt = value[2]
@@ -150,17 +165,43 @@ def extract_text_and_erase(image_path):
         if xt > 0 and yt > 0 and wt > 0 and ht > 0:
             values.append([xt-10,yt-10,wt+35,ht+35])
     for value in values:
-        img[value[1]:value[1]+value[3], value[0]:value[0]+value[2]] = text_erasor(img[value[1]:value[1]+value[3], value[0]:value[0]+value[2]])
+        if (banner_blue_loc == [0,0,1,1] or banner_blue_loc[1] > value[1]) and value[0] < 800:
+            banner_blue_loc = value
+            most_common_blue_color = rgb_to_hsv(find_most_common_color(img[value[1]:value[1]+value[3], value[0]:value[0]+value[2]]))
+        elif (banner_black_loc == [0,0,1,1] or banner_black_loc[1] > value[1]) and value[0] > 800:
+            banner_black_loc = value
+            most_common_black_color = rgb_to_hsv(find_most_common_color(img[value[1]:value[1]+value[3], value[0]:value[0]+value[2]]))
+        img[value[1]:value[1]+value[3], value[0]:value[0]+value[2]] = text_erasor(value[0], img[value[1]:value[1]+value[3], value[0]:value[0]+value[2]])
+    if execution_number == 0:
+        if banner_blue_loc != [0,0,1,1] and banner_blue_dim_array == [1,1]:
+            banner_blue_dim_array = [banner_blue_loc[2], banner_blue_loc[3]]
+        if banner_black_loc != [0,0,1,1] and banner_black_dim_array == [1,1]:
+            banner_black_dim_array = [banner_black_loc[2], banner_black_loc[3]]
+        banner_blue_loc_array.append([banner_blue_loc, most_common_blue_color])
+        banner_black_loc_array.append([banner_black_loc, most_common_black_color])
+    if execution_number == 1:
+        if banner_blue_loc_array[frame_number][1] != "":
+            banner_blue = remove_other_colours(cv2.imread("temp/new_banner_man.png"), banner_blue_loc_array[frame_number][1],rgb_to_hsv(blue)) 
+            new_banner_blue_resized = cv2.resize(banner_blue, (banner_blue_dim_array[0],banner_blue_dim_array[1])) 
+            img[banner_blue_loc_array[frame_number][0][1]:banner_blue_loc_array[frame_number][0][1]+banner_blue_dim_array[1], banner_blue_loc_array[frame_number][0][0]:banner_blue_loc_array[frame_number][0][0]+banner_blue_dim_array[0]] = new_banner_blue_resized 
+        if banner_black_loc_array[frame_number][1] != "":
+            banner_black = remove_other_colours(cv2.imread("temp/new_banner_man.png"), banner_black_loc_array[frame_number][1],rgb_to_hsv(black)) 
+            new_banner_black_resized = cv2.resize(banner_black, (banner_black_dim_array[0],banner_black_dim_array[1])) 
+            img[banner_black_loc_array[frame_number][0][1]:banner_black_loc_array[frame_number][0][1]+banner_black_dim_array[1], banner_black_loc_array[frame_number][0][0]:banner_black_loc_array[frame_number][0][0]+banner_black_dim_array[0]] = new_banner_black_resized 
     cv2.imwrite(image_path, img)
+
+
 
 def change_video(path):
     array = video_frames(path)
     frames = array[0]
     fps = array[1]
+    get_image(new_name, "static/alphabets-v2.jpg", "new_banner_man.png")
+    get_image(new_name, "static/alphabets.png", "new_banner_women.png")
     for x in frames:
         print(x)
         for y in range(2):
-            extract_text_and_erase(x)
+            extract_text_and_erase(x, y, frames.index(x))
         # detect_faces_and_swap(x)
     video_join(frames, fps)
 

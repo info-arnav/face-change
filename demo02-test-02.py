@@ -1,6 +1,5 @@
-
 from face_swap import swap, cv2, DeepFace
-from text_detector import text_detector, text_erasor, rgb_to_hsv, find_most_common_color
+from text_detector_test import text_detector, text_erasor, rgb_to_hsv, find_most_common_color
 import os,shutil
 import face_recognition
 import numpy as np
@@ -10,7 +9,10 @@ from error_scope import original_name_errors
 from east_text_model import find_text_boxes
 from word_to_image import *
 from ranges import black, blue
+
 import keras_ocr
+
+pipeline = keras_ocr.pipeline.Pipeline()
 
 executable = True
 
@@ -19,13 +21,13 @@ tolerance = 0.5 # 0.5 -> Very Accurate | >0.5 -> Decent
 old_face = "static/orignal.png"
 new_face = "static/demo.png"
 video = "static/sample.mp4"
-new_name = "Name"
+new_name = "Arnav"
 original_name = "rohit"
 
-hBlue = 0
-hBlack = 0
-wBlue = 0
-wBlack = 0
+banner_blue_loc_array = []
+banner_blue_dim_array = [1,1]
+banner_black_loc_array = []
+banner_black_dim_array = [1,1]
 
 def video_frames(path):
     array = []
@@ -125,87 +127,36 @@ def detect_faces_and_swap(frame):
         face = img[y:y+h, x:x+w]
         action(encodings, dictionary, face, frame, img, x,y,w,h)
 
-def should_replace(text):
-    if text in original_name_errors:
-        return True
-    elif "h" in text and "i" in text and ("t" in text or "r" in text):
-        return True
-    return False
-
-def resize_bbox_to_minimum(x,y,w,h):
-    min_rect = cv2.minAreaRect(np.array([(x, y), (x + w, y), (x, y + h), (x + w, y + h)]))
-    min_rect_points = cv2.boxPoints(min_rect).astype(int)
-    min_x, min_y = np.min(min_rect_points, axis=0)
-    max_x, max_y = np.max(min_rect_points, axis=0)
-    return (min_x, min_y, max_x - min_x, max_y - min_y)
-    
-def create_boxes(n_boxes, data, path, type):
-    img = cv2.imread(f"frames/{path}.jpg")
-    for i in range(n_boxes):
-        (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
-        img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        img = cv2.putText(img, data["text"][i].lower(), (x, y - 5),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 1)
-    cv2.imwrite(f"text-box/{path}-{type}.jpg", img)
-
-def replace_text(img, n_boxes, data, path, type):
-    global hBlue
-    global hBlack
-    global wBlue
-    global wBlack 
-    file = open(f"text/{path}.txt", "a")
-    file.seek(2)
-    file.write("\nMode Change\n")
-    create_boxes(n_boxes, data, path, type)
-    for i in range(n_boxes):
-        (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
-        file.write(data["text"][i].lower()+"\n")
-        if should_replace(data["text"][i].lower()):
-            all_boxes = find_text_boxes(img, path, type)
-            area = 0
-            values = [0,0,0,0]
-            for value in all_boxes:
-                xt = min(max(x, value[0]), x+w)
-                wwt = min(w+x, value[2])
-                wt = max(1,wwt-xt)
-                yt = min(max(y, value[1]), y+h)
-                wht = min(h+y, value[3])
-                ht = max(1,wht-yt)
-                if ht*wt >= area:
-                    area = ht*wt
-                    values = [xt,yt,wt,ht]
-            img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]] = text_erasor(img[values[1]:values[1]+values[3], values[0]:values[0]+values[2]])
-            banner = []
-            # Option 1
-            if values[0] > 800:
-                color = black
-                if hBlack == 0:
-                    hBlack = values[3]
-                    wBlack = values[2]
-                wConsidered, hConsidered = wBlack, hBlack #option 1
-                # wConsidered, hConsidered = values[2],values[3] #option 2
-                banner = remove_other_colours(cv2.imread("temp/new_banner_man.png"), rgb_to_hsv(find_most_common_color(img[values[1]:values[1]+hConsidered, values[0]:values[0]+wConsidered])),rgb_to_hsv(color)) #temp
-            else:
-                color = blue
-                if hBlue == 0:
-                    hBlue = values[3]
-                    wBlue = values[2]
-                wConsidered, hConsidered = wBlue, hBlue #option 1
-                # wConsidered, hConsidered = values[2],values[3] #option 2
-                banner = remove_other_colours(cv2.imread("temp/new_banner_women.png"), rgb_to_hsv(find_most_common_color(img[values[1]:values[1]+hConsidered, values[0]:values[0]+wConsidered])),rgb_to_hsv(color)) #temp
-            new_banner_recoloured = cv2.resize(banner, (wConsidered,hConsidered)) #temp
-            img[values[1]:values[1]+hConsidered, values[0]:values[0]+wConsidered] = new_banner_recoloured #temp
-    file.close()
-    return img
-
-def extract_text(image_path):
-    img = cv2.imread(image_path)
-    path = image_path.split("/")[1].split(".")[0]
-    temp_file = open(f"text/{path}.txt", "x")
-    temp_file.close()
-    [data_opening,data_canny,data_threshold] = text_detector(image_path)
-    n_boxes_threshold = len(data_threshold['text'])
-    img = replace_text(img, n_boxes_threshold ,data_threshold, path,"threshold")
-    cv2.imwrite(image_path, img)
+def extract_text_and_erase(image_path):
+    global banner_blue_loc_array
+    global banner_black_loc_array
+    image = keras_ocr.tools.read(image_path)
+    prediction_groups = pipeline.recognize([image])
+    for data in prediction_groups[0]:
+        coordinates = data[1]
+        coordinates = coordinates.astype(np.int32)
+        coordinates = coordinates.reshape((-1, 1, 2))
+        x, y, w, h = cv2.boundingRect(coordinates)
+        x = max(0, x)
+        y = max(0, y)
+        w = min(w, image.shape[1] - x)
+        h = min(h, image.shape[0] - y)
+        if data[0] == "rohit":
+            image = cv2.imread(image_path)
+            image[y:y+h, x:x+w] = text_erasor(image[y:y+h, x:x+w])
+            if x < 800:
+                if banner_blue_loc_array == []:
+                    banner_blue_loc_array = [w-10,h-10]
+                banner_blue = remove_other_colours(cv2.imread("temp/new_banner_man.png"), rgb_to_hsv(find_most_common_color(image[y:y+h, x:x+w])), rgb_to_hsv(blue)) 
+                new_banner_blue_resized = cv2.resize(banner_blue, (banner_blue_loc_array[0],banner_blue_loc_array[1])) 
+                image[y:y+banner_blue_loc_array[1], x:x+banner_blue_loc_array[0]] = new_banner_blue_resized
+            if x > 800:
+                if banner_black_loc_array == []:
+                    banner_black_loc_array = [w-10,h-10]
+                banner_black = remove_other_colours(cv2.imread("temp/new_banner_women.png"), rgb_to_hsv(find_most_common_color(image[y:y+h, x:x+w])), rgb_to_hsv(black)) 
+                new_banner_black_resized = cv2.resize(banner_black, (banner_black_loc_array[0],banner_black_loc_array[1])) 
+                image[y:y+banner_black_loc_array[1], x:x+banner_black_loc_array[0]] = new_banner_black_resized 
+            cv2.imwrite(image_path, image)
 
 def change_video(path):
     array = video_frames(path)
@@ -213,14 +164,11 @@ def change_video(path):
     fps = array[1]
     get_image(new_name, "static/alphabets-v2.jpg", "new_banner_man.png")
     get_image(new_name, "static/alphabets.png", "new_banner_women.png")
-    print("New banner saved at temp/new_banner.png")
     for x in frames:
         print(x)
-        extract_text(x)
+        extract_text_and_erase(x)
         # detect_faces_and_swap(x)
     video_join(frames, fps)
 
 if executable:
     change_video(video)
-
-

@@ -28,6 +28,19 @@ def remove_other_colours(img, array_min, array_max):
     img[mask<=0] = [170,170,170]
     return img
 
+# def text_erasor(x_coordinate, img, array_min=min_range, array_max=max_range):
+#     position = 0
+#     if x_coordinate > 800:
+#         position = 1
+#     min_value = np.array(array_min[position],np.uint8)
+#     max_value = np.array(array_max[position],np.uint8)
+#     HSV  = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+#     kernel = np.ones((15, 15), np.uint8)
+#     mask = cv2.inRange(HSV, min_value, max_value)
+#     mask = cv2.dilate(mask, kernel, iterations=1)
+#     img[mask>0] = rgb_to_hsv(find_most_common_color(img))
+#     return img
+
 def text_erasor(img, array_min=min_range, array_max=max_range):
     min0 = np.array(array_min[0],np.uint8)
     max0 = np.array(array_max[0],np.uint8)

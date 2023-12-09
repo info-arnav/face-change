@@ -192,7 +192,7 @@ def extract_text(image_path):
 def change_video(path):
     array = video_frames(path)
     frames = array[0]
-    fps = array[1]
+    fps = array[1]      
     get_image(new_name)
     print("New banner saved at temp/new_banner.png")
     for x in frames:
