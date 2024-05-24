@@ -18,6 +18,7 @@ ffmpeg-python
 gdown
 pytesseract
 pillow
+python3-tk
 tensorflow[and-cuda]
 tflite-model-maker
 tflite-support
